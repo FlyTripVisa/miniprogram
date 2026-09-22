@@ -1,34 +1,73 @@
 {
-	"$schema": "./node_modules/wrangler/config-schema.json",
-	// Top-level configuration
-	"name": "miniprogram",
-	"main": "src/index.js",
-	// Set this to today's date
-	"compatibility_date": "2026-09-22",
-	"workers_dev": false,
-	"route": {
-		"pattern": "flytripvisa.site/*",
-		"zone_name": "flytripvisa.site",
-	},
-	"kv_namespaces": [
-		{
-			"binding": "<MY_NAMESPACE>",
-			"id": "<KV_ID>",
-		},
-	],
-	"env": {
-		"staging": {
-			"name": "my-worker-staging",
-			"route": {
-				"pattern": "staging.example.org/*",
-				"zone_name": "example.org",
-			},
-			"kv_namespaces": [
-				{
-					"binding": "<MY_NAMESPACE>",
-					"id": "<STAGING_KV_ID>",
-				},
-			],
-		},
-	},
+  // ── FlyTripVisa Worker Configuration ──────────────────────────────
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "miniprogram",
+  "main": "parked.js",
+  "compatibility_date": "2026-09-22",
+  "workers_dev": false,
+
+  // ── Production Route (main domain) ────────────────────────────────
+  "routes": [
+    {
+      "pattern": "flytripvisa.site/*",
+      "zone_name": "flytripvisa.site",
+      "custom_domain": false
+    }
+  ],
+
+  // ── KV Namespace Bindings ─────────────────────────────────────────
+  "kv_namespaces": [
+    {
+      "binding": "MY_NAMESPACE",
+      "id": "<KV_ID>"
+    }
+  ],
+
+  // ── AI Binding (Workers AI — Fly Dragon AI Assistant) ────────────
+  "ai": {
+    "binding": "AI"
+  },
+
+  // ── Environment: Staging ──────────────────────────────────────────
+  "env": {
+    "staging": {
+      "name": "miniprogram-staging",
+      "routes": [
+        {
+          "pattern": "staging.flytripvisa.site/*",
+          "zone_name": "flytripvisa.site",
+          "custom_domain": false
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "MY_NAMESPACE",
+          "id": "<STAGING_KV_ID>"
+        }
+      ],
+      "ai": {
+        "binding": "AI"
+      }
+    }
+  },
+
+  // ── Vars (non-secret config) ─────────────────────────────────────
+  "vars": {
+    "SITE_NAME": "FlyTripVisa",
+    "MAIN_DOMAIN": "https://flytripvisa.site",
+    "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct",
+    "AI_ENDPOINT": "/api/ai-chat",
+    "TELEGRAM_BOT": "https://t.me/flytripvisa_bot",
+    "WHATSAPP_DIRECT": "https://wa.me/8801338354383",
+    "WHATSAPP_CHANNEL": "https://whatsapp.com/channel/0029VbC1mcU9mrGUPF1iyA1D",
+    "FACEBOOK": "https://www.facebook.com/share/19QNbhx8Mo/",
+    "INSTAGRAM": "https://www.instagram.com/flyviewvisa.site",
+    "WECOM": "https://work.weixin.qq.com/"
+  },
+
+  // ── Observability ────────────────────────────────────────────────
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
 }

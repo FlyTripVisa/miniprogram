@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "miniprogram",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-30",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "vars": {
+    "ENVIRONMENT": "production",
+    "APP_URL": "https://flytripvisa.site",
+    "AI_GATEWAY_ID": "kimik2",
+    "CLOUDFLARE_ACCOUNT_ID": "b73b80fa62deef032d3c08248cf2f30b",
+    "HUGGINGFACE_MODEL": "mistralai/Mistral-7B-Instruct-v0.3",
+    "TELEGRAM_BOT_USERNAME": "aialionBot"
+  },
+
+  "ai": { "binding": "AI" },
+
+  "durable_objects": {
+    "bindings": [{ "name": "ChatAgent", "class_name": "ChatAgent" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatAgent"] }],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "flytripvisa-db",
+      "database_id": "f274effd-ff6e-4c75-b8a8-4083726232fe"
+    }
+  ],
+
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "flytripvisa-media" }],
+
+  "kv_namespaces": [
+    { "binding": "KV", "id": "55384fd25e174d69ad17b3cb1b576ab7" }
+  ],
+
+  "vectorize": [
+    { "binding": "VISA_VECTORIZE", "index_name": "flytripvisa-visa-index" }
+  ],
+
+  "queues": [{ "binding": "JOBS", "queue_name": "flytripvisa-jobs" }],
+
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 }
+}

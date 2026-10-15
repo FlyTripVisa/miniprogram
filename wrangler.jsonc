@@ -1,62 +1,27 @@
-
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "miniprogram",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-06",
   "compatibility_flags": ["nodejs_compat"],
-
+  "workers_dev": true,
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "404-page"
   },
-
-  "ai": {
-    "binding": "AI"
-  },
-
-  "unsafe": {
-    "bindings": [
-      {
-        "name": "AI_Search",
-        "type": "ai_search_namespace",
-        "namespace": "ai-dragon"
-      },
-      {
-        "name": "AI_Search_2",
-        "type": "ai_search",
-        "instance_name": "flytripvisa"
-      },
-      {
-        "name": "Service",
-        "type": "service",
-        "service": "miniprogram",
-        "environment": "production"
-      }
-    ]
-  },
-
-  "browser": {
-    "binding": "Browser"
-  },
-
+  "ai": { "binding": "AI" },
+  "browser": { "binding": "Browser" },
   "d1_databases": [
     {
       "binding": "D1",
       "database_name": "flytripvisa-db",
-      "database_id": "f274effd-ff6e-4c75-b8a8-4083726232fe"
+      "database_id": "f274effd-ff6e-4c75-b8a8-4083726232fe",
+      "migrations_dir": "migrations"
     }
   ],
-
-  "version_metadata": {
-    "binding": "metadata"
-  },
-
   "r2_buckets": [
-    {
-      "binding": "R2",
-      "bucket_name": "flytripvisa"
-    }
-  ]
+    { "binding": "R2", "bucket_name": "flytripvisa" }
+  ],
+  "version_metadata": { "binding": "metadata" }
 }

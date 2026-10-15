@@ -4,8 +4,10 @@
   "version": "1.0.1",
   "private": true,
   "type": "module",
+  "description": "FlyTripVisa Cloudflare Workers AI application",
   "scripts": {
     "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "node --test"

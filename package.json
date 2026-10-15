@@ -11,7 +11,7 @@
     "test": "node --test"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20261006.0",
+    "@cloudflare/workers-types": "5.20261014.1",
     "typescript": "^5.9.3",
     "wrangler": "^4.149.0"
   }

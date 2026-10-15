@@ -1,0 +1,1075 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="AI Worker real-time chat assistant powered by Cloudflare Workers.">
+  <title>AI Worker Agent · Real-time Chat</title>
+
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+  <style>
+    /* ===== GLOBAL ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      color-scheme: dark;
+      --bg: #000000;
+      --panel: #080808;
+      --surface: #111111;
+      --surface-2: #181818;
+      --border: #303030;
+      --text: #f9fafb;
+      --muted: #a1a1aa;
+      --blue: #2563eb;
+      --blue-hover: #1d4ed8;
+    }
+
+    html {
+      width: 100%;
+      min-height: 100%;
+      background: var(--bg);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, textarea {
+      font: inherit;
+    }
+
+    button {
+      touch-action: manipulation;
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    .app {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      gap: 0;
+      background: var(--bg);
+    }
+
+    /* ===== DESKTOP SIDEBAR ===== */
+    .sidebar {
+      display: none;
+      width: 33.333%;
+      flex-shrink: 0;
+      justify-content: center;
+      align-items: center;
+      padding: 2.5rem;
+      background: var(--panel);
+    }
+
+    .sidebar-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      width: 100%;
+      max-width: 28rem;
+    }
+
+    .gradient-title {
+      font-size: clamp(2.5rem, 4vw, 3.75rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+      background: linear-gradient(90deg, #e711dd, #7c83ff, #5ce8f2);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .demo-title {
+      color: var(--text);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-top: -1.5rem;
+    }
+
+    .sidebar-description {
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .code-block-wrapper {
+      position: relative;
+      min-width: 0;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      z-index: 2;
+      padding: 0.4rem 0.75rem;
+      border: 1px solid #404040;
+      border-radius: 0.5rem;
+      background: #262626;
+      color: white;
+      cursor: pointer;
+    }
+
+    .copy-btn:hover {
+      background: #404040;
+    }
+
+    .code-block {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      background: #050505;
+    }
+
+    .code-block code {
+      display: block;
+      padding: 1.25rem;
+      padding-top: 3.5rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: #d4d4d8;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    /* ===== CHAT PANEL ===== */
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-width: 0;
+      flex: 1;
+      background: var(--bg);
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 48rem;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+      margin: 0 auto;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .chat-inner {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      gap: 1rem;
+      padding: 1rem;
+      padding-bottom: 0;
+      background: var(--bg);
+    }
+
+    /* ===== MESSAGE AREA ===== */
+    .message-area {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      gap: 1.25rem;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #404040 #000;
+      padding-bottom: 1rem;
+    }
+
+    .welcome-screen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+      min-height: 200px;
+      padding: 1rem 0;
+    }
+
+    .welcome-line-1 {
+      margin-bottom: 0.5rem;
+      color: #fff;
+      font-size: clamp(1.5rem, 5vw, 1.875rem);
+      font-weight: 700;
+      line-height: 1.3;
+      animation: slide-up 0.5s ease-out both;
+    }
+
+    .welcome-line-2 {
+      color: var(--muted);
+      font-size: clamp(1rem, 3.5vw, 1.25rem);
+      line-height: 1.6;
+      animation: slide-up 0.5s 0.15s ease-out both;
+    }
+
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== CHAT MESSAGES ===== */
+    .messages-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .message {
+      display: block;
+      max-width: 88%;
+      padding: 0.8rem 1rem;
+      border-radius: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      animation: fade-in 0.2s ease;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      margin-left: auto;
+      background: var(--blue);
+      color: #fff;
+      border-bottom-right-radius: 0.25rem;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      margin-right: auto;
+      background: var(--surface-2);
+      color: #f5f5f5;
+      border: 1px solid #242424;
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    .message.error {
+      border-color: #7f1d1d;
+      color: #fecaca;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0.5; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== TYPING INDICATOR ===== */
+    .typing-indicator {
+      display: none;
+      align-self: flex-start;
+      max-width: 90%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #242424;
+      border-radius: 1rem;
+      border-bottom-left-radius: 0.25rem;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .typing-indicator.visible {
+      display: block;
+    }
+
+    .typing-indicator span {
+      display: inline-block;
+      animation: pulse 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.3; }
+      40% { opacity: 1; }
+    }
+
+    /* ===== INPUT AREA ===== */
+    .input-area {
+      flex-shrink: 0;
+      padding: 0.75rem 0;
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+      background: var(--bg);
+    }
+
+    .chat-form {
+      display: flex;
+      position: relative;
+      width: 100%;
+      min-width: 0;
+      gap: 0.5rem;
+    }
+
+    .chat-textarea {
+      display: block;
+      flex: 1;
+      min-width: 0;
+      width: 100%;
+      height: 5rem;
+      min-height: 3.5rem;
+      max-height: 220px;
+      resize: vertical;
+      overflow-y: auto;
+      padding: 0.9rem 3.5rem 0.9rem 1rem;
+      border: 1px solid #333;
+      border-radius: 1rem;
+      outline: none;
+      background: var(--surface);
+      color: #fff;
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-appearance: none;
+      appearance: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .chat-textarea:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgb(59 130 246 / 20%);
+    }
+
+    .chat-textarea::placeholder {
+      color: #a1a1aa;
+    }
+
+    .chat-textarea:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .send-button {
+      position: absolute;
+      right: 0.5rem;
+      bottom: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+      touch-action: manipulation;
+    }
+
+    .send-button:hover:not(:disabled) {
+      background: var(--blue-hover);
+    }
+
+    .send-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ===== TABLET AND DESKTOP ===== */
+    @media (min-width: 768px) {
+      .sidebar {
+        display: flex;
+      }
+
+      .chat-panel {
+        width: 66.666%;
+        border-left: 1px solid #262626;
+      }
+
+      .chat-container {
+        padding: 1rem;
+      }
+
+      .chat-inner {
+        padding: 1rem;
+        padding-bottom: 0;
+      }
+    }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 767px) {
+      .sidebar {
+        display: none;
+      }
+
+      .chat-panel {
+        width: 100%;
+        border-left: 0;
+      }
+
+      .chat-container {
+        width: 100%;
+        max-width: none;
+        padding: 0;
+      }
+
+      .chat-inner {
+        gap: 0.75rem;
+        padding: 0.75rem;
+        padding-bottom: 0;
+      }
+
+      .message-area {
+        gap: 0.875rem;
+      }
+
+      .message {
+        max-width: 92%;
+        padding: 0.7rem 0.85rem;
+        font-size: 0.9375rem;
+      }
+
+      .input-area {
+        padding-top: 0.5rem;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .chat-inner {
+        padding-right: 0.5rem;
+        padding-left: 0.5rem;
+      }
+
+      .message {
+        max-width: 95%;
+      }
+
+      .chat-textarea {
+        padding-left: 0.75rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-content">
+        <h1 class="gradient-title">AI Worker</h1>
+        <h2 class="demo-title">Real-time Agent</h2>
+
+        <p class="sidebar-description">
+          Your AI assistant is ready to help. Connect your Cloudflare
+          Worker to start a real conversation.
+        </p>
+
+        <div class="code-block-wrapper">
+          <button class="copy-btn" type="button" id="copyBtn">
+            <i class="fas fa-copy" aria-hidden="true"></i> Copy
+          </button>
+
+          <pre class="code-block"><code id="codeSnippet">// Cloudflare AI Worker
+export default {
+  async fetch(request, env) {
+    const { prompt } = await request.json();
+
+    const response = await env.AI.run(
+      '@cf/meta/llama-3.1-8b-instruct',
+      { prompt }
+    );
+
+    return Response.json({ response });
+  }
+}</code></pre>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CHAT PANEL -->
+    <main class="chat-panel">
+      <div class="chat-container">
+        <div class="chat-inner">
+
+          <section
+            class="message-area"
+            id="messageArea"
+            aria-label="Chat messages"
+            aria-live="polite"
+          >
+            <div class="welcome-screen" id="welcomeScreen">
+              <p class="welcome-line-1">🤖 AI Worker active</p>
+              <p class="welcome-line-2">
+                Ask me anything. Connect to your AI Worker for real answers.
+              </p>
+            </div>
+
+            <div class="messages-list" id="messagesList"></div>
+
+            <div
+              class="typing-indicator"
+              id="typingIndicator"
+              role="status"
+              aria-live="polite"
+            >
+              <span>●</span>
+              <span>●</span>
+              <span>●</span>
+              &nbsp; AI is thinking…
+            </div>
+          </section>
+
+          <section class="input-area">
+            <form class="chat-form" id="chatForm">
+              <label class="sr-only" for="messageInput">
+                Type your message
+              </label>
+
+              <textarea
+                class="chat-textarea"
+                name="input"
+                id="messageInput"
+                placeholder="Message AI Worker..."
+                autocomplete="off"
+                autocapitalize="sentences"
+                spellcheck="true"
+                rows="1"
+                maxlength="12000"
+                enterkeyhint="send"
+                required
+              ></textarea>
+
+              <button
+                class="send-button"
+                type="submit"
+                id="sendButton"
+                aria-label="Send message"
+                title="Send message"
+                disabled
+              >
+                <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                <span class="sr-only">Send</span>
+              </button>
+            </form>
+          </section>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      /* ==========================================
+         CLOUDFLARE WORKER CONFIGURATION
+         Change this URL if your Worker uses another
+         endpoint. The endpoint must accept POST JSON.
+         ========================================== */
+
+      const WORKER_URL = "https://ai.flytripvisa.site/";
+
+      // Real Worker mode: no simulated AI replies.
+      const USE_MOCK = false;
+
+      // Set true only if your Worker explicitly supports
+      // Server-Sent Events (SSE) using text/event-stream.
+      const STREAMING_ENABLED = false;
+
+      const REQUEST_TIMEOUT_MS = 60000;
+
+      /* DOM REFERENCES */
+
+      const messageArea = document.getElementById("messageArea");
+      const welcomeScreen = document.getElementById("welcomeScreen");
+      const messagesList = document.getElementById("messagesList");
+      const chatForm = document.getElementById("chatForm");
+      const messageInput = document.getElementById("messageInput");
+      const sendButton = document.getElementById("sendButton");
+      const copyBtn = document.getElementById("copyBtn");
+      const codeSnippet = document.getElementById("codeSnippet");
+      const typingIndicator = document.getElementById("typingIndicator");
+
+      /* CHAT STATE */
+
+      let messages = [];
+      let isSending = false;
+      let activeController = null;
+
+      /* SAFE UI HELPERS */
+
+      function scrollToBottom() {
+        requestAnimationFrame(() => {
+          messageArea.scrollTop = messageArea.scrollHeight;
+        });
+      }
+
+      function renderMessages() {
+        welcomeScreen.hidden = messages.length > 0;
+        welcomeScreen.style.display =
+          messages.length > 0 ? "none" : "flex";
+
+        messagesList.replaceChildren();
+
+        for (const msg of messages) {
+          const element = document.createElement("div");
+          element.className = "message " + msg.role;
+
+          if (msg.error) {
+            element.classList.add("error");
+          }
+
+          // Use textContent to prevent HTML injection.
+          element.textContent = msg.content;
+          messagesList.appendChild(element);
+        }
+
+        scrollToBottom();
+      }
+
+      function addMessage(role, content, error = false) {
+        messages.push({
+          role,
+          content: String(content),
+          error
+        });
+
+        renderMessages();
+      }
+
+      function setTyping(visible) {
+        typingIndicator.classList.toggle("visible", visible);
+
+        if (visible) {
+          scrollToBottom();
+        }
+      }
+
+      function updateSendButton() {
+        sendButton.disabled =
+          !messageInput.value.trim() || isSending;
+      }
+
+      /* MOCK MODE - DISABLED BY DEFAULT */
+
+      async function fetchMockResponse(prompt) {
+        const text = prompt.toLowerCase();
+
+        if (text.includes("hello") || text.includes("hi")) {
+          return "Hello! How can I help you today?";
+        }
+
+        return "Mock response: " + prompt;
+      }
+
+      /* EXTRACT TEXT FROM COMMON WORKER RESPONSES */
+
+      function extractResponse(data) {
+        if (typeof data === "string") {
+          return data;
+        }
+
+        if (!data || typeof data !== "object") {
+          throw new Error("The Worker returned an empty response.");
+        }
+
+        // Common Cloudflare Workers AI response shapes.
+        const candidates = [
+          data.response,
+          data.result,
+          data.text,
+          data.output,
+          data.message,
+          data.content,
+          data?.result?.response,
+          data?.result?.text,
+          data?.result?.output,
+          data?.choices?.[0]?.message?.content,
+          data?.choices?.[0]?.text
+        ];
+
+        for (const value of candidates) {
+          if (typeof value === "string" && value.trim()) {
+            return value;
+          }
+        }
+
+        if (data.success === false || data.error) {
+          throw new Error(
+            typeof data.error === "string"
+              ? data.error
+              : "The Worker reported an error."
+          );
+        }
+
+        throw new Error(
+          "Unrecognized Worker response. Check the API response format."
+        );
+      }
+
+      /* REAL WORKER REQUEST */
+
+      async function fetchAIResponse(prompt, signal) {
+        if (USE_MOCK) {
+          return fetchMockResponse(prompt);
+        }
+
+        if (
+          !WORKER_URL ||
+          WORKER_URL.includes("your-worker.example")
+        ) {
+          throw new Error("Configure your real Worker URL first.");
+        }
+
+        const response = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": STREAMING_ENABLED
+              ? "text/event-stream, application/json"
+              : "application/json"
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            messages: messages.map((message) => ({
+              role: message.role === "bot" ? "assistant" : "user",
+              content: message.content
+            }))
+          }),
+          signal,
+          cache: "no-store",
+          credentials: "omit"
+        });
+
+        if (!response.ok) {
+          let detail = "";
+
+          try {
+            detail = (await response.text()).slice(0, 500);
+          } catch (_) {
+            // Ignore a response body read error.
+          }
+
+          throw new Error(
+            "Worker HTTP " + response.status +
+            (detail ? ": " + detail : "")
+          );
+        }
+
+        const contentType =
+          response.headers.get("content-type") || "";
+
+        if (
+          STREAMING_ENABLED &&
+          contentType.includes("text/event-stream")
+        ) {
+          return await readEventStream(response, signal);
+        }
+
+        const data = await response.json();
+        return extractResponse(data);
+      }
+
+      /* OPTIONAL SSE READER
+         Enable STREAMING_ENABLED only when the backend
+         returns properly formatted Server-Sent Events.
+      */
+
+      async function readEventStream(response, signal) {
+        if (!response.body) {
+          throw new Error("Streaming is not supported by this response.");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let result = "";
+
+        try {
+          while (true) {
+            if (signal.aborted) {
+              throw new DOMException("Request cancelled.", "AbortError");
+            }
+
+            const { value, done } = await reader.read();
+
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
+
+            for (const event of events) {
+              const dataLines = event
+                .split("\n")
+                .filter((line) => line.startsWith("data:"))
+                .map((line) => line.slice(5).trim());
+
+              if (!dataLines.length) continue;
+
+              const dataText = dataLines.join("\n");
+
+              if (dataText === "[DONE]") {
+                return result;
+              }
+
+              try {
+                const parsed = JSON.parse(dataText);
+
+                if (parsed.error) {
+                  throw new Error(
+                    typeof parsed.error === "string"
+                      ? parsed.error
+                      : "Streaming response error."
+                  );
+                }
+
+                const chunk =
+                  parsed.response ??
+                  parsed.text ??
+                  parsed.token ??
+                  parsed?.choices?.[0]?.delta?.content ??
+                  "";
+
+                if (typeof chunk === "string") {
+                  result += chunk;
+                }
+              } catch (error) {
+                if (
+                  error instanceof SyntaxError
+                ) {
+                  result += dataText;
+                } else {
+                  throw error;
+                }
+              }
+            }
+          }
+
+          buffer += decoder.decode();
+
+          if (buffer.trim()) {
+            const remaining = buffer
+              .split("\n")
+              .filter((line) => line.startsWith("data:"))
+              .map((line) => line.slice(5).trim())
+              .join("\n");
+
+            if (remaining && remaining !== "[DONE]") {
+              try {
+                const parsed = JSON.parse(remaining);
+                result +=
+                  parsed.response || parsed.text || parsed.token || "";
+              } catch (_) {
+                result += remaining;
+              }
+            }
+          }
+
+          if (!result.trim()) {
+            throw new Error("The streaming response contained no text.");
+          }
+
+          return result;
+        } finally {
+          reader.releaseLock();
+        }
+      }
+
+      /* SUBMIT MESSAGE */
+
+      async function handleSubmit(event) {
+        event.preventDefault();
+
+        const prompt = messageInput.value.trim();
+
+        if (!prompt || isSending) {
+          return;
+        }
+
+        addMessage("user", prompt);
+
+        messageInput.value = "";
+        messageInput.style.height = "";
+        isSending = true;
+        updateSendButton();
+
+        setTyping(true);
+
+        activeController = new AbortController();
+
+        const timeoutId = setTimeout(() => {
+          if (activeController) {
+            activeController.abort("Request timed out.");
+          }
+        }, REQUEST_TIMEOUT_MS);
+
+        try {
+          const reply = await fetchAIResponse(
+            prompt,
+            activeController.signal
+          );
+
+          addMessage("bot", reply);
+        } catch (error) {
+          console.error("AI Worker request failed:", error);
+
+          let message =
+            "Sorry, I couldn't connect to the AI Worker. Please try again.";
+
+          if (error.name === "AbortError") {
+            message =
+              "The request timed out or was cancelled. Please try again.";
+          } else if (
+            error instanceof TypeError
+          ) {
+            message =
+              "Network or CORS error. Check your Worker URL, network connection and CORS configuration.";
+          } else if (error.message) {
+            message = error.message;
+          }
+
+          addMessage("bot", "⚠️ " + message, true);
+        } finally {
+          clearTimeout(timeoutId);
+          activeController = null;
+          isSending = false;
+          setTyping(false);
+          updateSendButton();
+
+          if (!window.matchMedia("(max-width: 767px)").matches) {
+            messageInput.focus();
+          }
+        }
+      }
+
+      /* COPY CODE */
+
+      async function handleCopy() {
+        const text = codeSnippet.textContent;
+
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const temporary = document.createElement("textarea");
+            temporary.value = text;
+            temporary.style.position = "fixed";
+            temporary.style.opacity = "0";
+            document.body.appendChild(temporary);
+            temporary.select();
+
+            const success = document.execCommand("copy");
+            temporary.remove();
+
+            if (!success) {
+              throw new Error("Copy command failed.");
+            }
+          }
+
+          copyBtn.textContent = "Copied!";
+
+          setTimeout(() => {
+            copyBtn.innerHTML =
+              '<i class="fas fa-copy" aria-hidden="true"></i> Copy';
+          }, 1500);
+        } catch (error) {
+          console.error("Copy failed:", error);
+          copyBtn.textContent = "Copy failed";
+        }
+      }
+
+      /* INPUT AND KEYBOARD */
+
+      messageInput.addEventListener("input", () => {
+        // Grow textarea to fit its content, up to CSS max-height.
+        messageInput.style.height = "auto";
+
+        const maxHeight = 220;
+        messageInput.style.height =
+          Math.min(messageInput.scrollHeight, maxHeight) + "px";
+
+        updateSendButton();
+      });
+
+      messageInput.addEventListener("keydown", (event) => {
+        // Enter sends; Shift+Enter inserts a newline.
+        if (
+          event.key === "Enter" &&
+          !event.shiftKey &&
+          !event.isComposing
+        ) {
+          event.preventDefault();
+
+          if (!sendButton.disabled) {
+            chatForm.requestSubmit();
+          }
+        }
+
+        // Escape cancels an active request.
+        if (
+          event.key === "Escape" &&
+          activeController
+        ) {
+          activeController.abort();
+        }
+      });
+
+      chatForm.addEventListener("submit", handleSubmit);
+      copyBtn.addEventListener("click", handleCopy);
+
+      /* INITIALIZE */
+
+      renderMessages();
+      updateSendButton();
+    })();
+  </script>
+</body>
+</html>
